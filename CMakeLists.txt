@@ -11,6 +11,7 @@ add_subdirectory(clang-query)
 add_subdirectory(clang-move)
 add_subdirectory(clangd)
 add_subdirectory(include-fixer)
+add_subdirectory(loop-convert)
 add_subdirectory(pp-trace)
 add_subdirectory(tool-template)
 
@@ -25,5 +26,3 @@ option(CLANG_TOOLS_EXTRA_INCLUDE_DOCS "Generate build targets for the Clang Extr
 if( CLANG_TOOLS_EXTRA_INCLUDE_DOCS )
   add_subdirectory(docs)
 endif()
-
-add_subdirectory(loop-convert)
