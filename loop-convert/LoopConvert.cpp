@@ -1,5 +1,6 @@
 // taken from https://clang.llvm.org/docs/LibASTMatchersTutorial.html
 
+#include "clang/AST/ASTContext.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 // Declares clang::SyntaxOnlyAction.
@@ -30,15 +31,41 @@ static cl::extrahelp MoreHelp("\nMore help text...");
 
 
 StatementMatcher LoopMatcher =
-  forStmt(hasLoopInit(declStmt(hasSingleDecl(varDecl(
-    hasInitializer(integerLiteral(equals(0)))))))).bind("forLoop");
+  forStmt(hasLoopInit(declStmt(
+              hasSingleDecl(varDecl(hasInitializer(integerLiteral(equals(0))))
+                                .bind("initVarName")))),
+          hasIncrement(unaryOperator(
+              hasOperatorName("++"),
+              hasUnaryOperand(declRefExpr(
+                  to(varDecl(hasType(isInteger())).bind("incVarName")))))),
+          hasCondition(binaryOperator(
+              hasOperatorName("<"),
+              hasLHS(ignoringParenImpCasts(declRefExpr(
+                  to(varDecl(hasType(isInteger())).bind("condVarName"))))),
+              hasRHS(expr(hasType(isInteger())))))).bind("forLoop");
+
+
+static bool areSameVariable(const ValueDecl *First, const ValueDecl *Second) {
+  return First && Second &&
+         First->getCanonicalDecl() == Second->getCanonicalDecl();
+}
 
 
 class LoopPrinter : public MatchFinder::MatchCallback {
 public :
   virtual void run(const MatchFinder::MatchResult &Result) {
-    if (const ForStmt *FS = Result.Nodes.getNodeAs<clang::ForStmt>("forLoop"))
-      FS->dump();
+    ASTContext *Context = Result.Context;
+    const ForStmt *FS = Result.Nodes.getNodeAs<ForStmt>("forLoop");
+    // We do not want to convert header files!
+    if (!FS || !Context->getSourceManager().isWrittenInMainFile(FS->getForLoc()))
+      return;
+    const VarDecl *IncVar = Result.Nodes.getNodeAs<VarDecl>("incVarName");
+    const VarDecl *CondVar = Result.Nodes.getNodeAs<VarDecl>("condVarName");
+    const VarDecl *InitVar = Result.Nodes.getNodeAs<VarDecl>("initVarName");
+
+    if (!areSameVariable(IncVar, CondVar) || !areSameVariable(IncVar, InitVar))
+      return;
+    llvm::outs() << "Potential array-based loop discovered.\n";
   }
 };
 
