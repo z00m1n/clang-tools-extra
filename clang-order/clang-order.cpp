@@ -30,7 +30,7 @@ static cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
 static cl::extrahelp MoreHelp("\nMore help text...");
 
 
-DeclarationMatcher MethodMatcher = cxxMethodDecl().bind("methodDeclaration");
+DeclarationMatcher MethodMatcher = cxxMethodDecl(unless(isImplicit())).bind("methodDeclaration");
 
 
 class MethodPrinter : public MatchFinder::MatchCallback {
