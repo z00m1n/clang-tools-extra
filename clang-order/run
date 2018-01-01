@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+../../llvm-mirror/tmp/build/bin/clang-order TestClass_01.cpp --
