@@ -46,45 +46,31 @@ class MethodPrinter : public MatchFinder::MatchCallback
   public:
     virtual void run(const MatchFinder::MatchResult& result)
     {
-        const CXXMethodDecl* decl = \
-            result.Nodes.getNodeAs<clang::CXXMethodDecl>("methodDeclaration");
-
         // TODO: use llvm::errs() ? or llvm::out() or so ?
 
+        const CXXMethodDecl* decl = \
+            result.Nodes.getNodeAs<clang::CXXMethodDecl>("methodDeclaration");
         if (decl == nullptr)
         {
             std::cout << "Can not get declaration from node" << std::endl;
             return;
         }
 
-        // https://stackoverflow.com/a/41437762
-        const Decl& currentDecl = *decl;
-
-        // https://stackoverflow.com/a/40188613
-        const auto& parentDecls = result.Context->getParents(currentDecl);
-        if (parentDecls.empty())
-        {
-            std::cout << "Declaration does not have any parents" << std::endl;
-            return;
-        }
-
-        // TODO: assert parentDecls.size() == 1
-        // std::cout << "parents size: " << parentDecls.size() << std::endl;
-
-        const Decl* parentDecl = parentDecls[0].get<Decl>();
+        // get parent declaration, i.e. the method's class
+        const CXXRecordDecl* parentDecl = decl->getParent();
         if (parentDecl == nullptr)
         {
-            std::cout << "Can not get first parent" << std::endl;
+            std::cout << "Can not get parent from declaration" << std::endl;
             return;
         }
 
+        // TODO: use isClass to verify parent is a class ?
+        // https://stackoverflow.com/a/10493643
 
         // https://stackoverflow.com/a/22291127
-        // TODO: this doesn't build - Decl is too base class
-        DeclarationNameInfo nameInfo = parentDecl->getNameInfo();
-        std::string declName = nameInfo.getName().getAsString();
+        std::string parentDeclName = parentDecl->getNameAsString();
 
-        std::cout << "Parent declaration name: " << declName << std::endl;
+        std::cout << "Parent declaration name: " << parentDeclName << std::endl;
         return;
 
 
