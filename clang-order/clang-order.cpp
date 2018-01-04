@@ -141,11 +141,19 @@ class MethodPrinter : public MatchFinder::MatchCallback
 int main(int argc, const char** argv)
 {
     CommonOptionsParser OptionsParser(argc, argv, ClangOrderCategory);
-    ClangTool           Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
+    ClangTool           Tool(OptionsParser.getCompilations(),
+                             OptionsParser.getSourcePathList());
 
     MethodPrinter Printer;
     MatchFinder   Finder;
     Finder.addMatcher(MethodMatcher, &Printer);
+
+    // TODO: should this tool support processing multiple files at once ?
+    // TODO: how to access Tool or sourcePaths from within run(...) ?
+
+    ArrayRef<std::string> sourcePaths = Tool.getSourcePaths();
+    std::cout << "file list size: " << sourcePaths.size() << std::endl;
+    std::cout << "first filename: " << sourcePaths[0]     << std::endl;
 
     return Tool.run(newFrontendActionFactory(&Finder).get());
 }

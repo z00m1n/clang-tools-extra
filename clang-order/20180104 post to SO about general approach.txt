@@ -1,0 +1,82 @@
+title: C++ / llvm / clang: help on general approach for refactoring tool needed
+tags : c++ c++11 clang
+
+I would like to create a tool that inspects if the order of method implementations in a C++ source file matches the order of method declarations in the corresponding header file.
+
+This is a shortened version of the code I have so far:
+
+<!-- language: lang-cpp -->
+
+    // #includes and namespace statements snipped
+    // error handling and log output also snipped
+
+    static llvm::cl::OptionCategory ClangOrderCategory("clang-order options");
+    static cl::extrahelp CommonHelp(CommonOptionsParser::HelpMessage);
+    static cl::extrahelp MoreHelp("\nMore help text...");
+
+    DeclarationMatcher MethodMatcher = cxxMethodDecl(unless(isImplicit())).bind("methodDeclaration");
+
+    class MethodPrinter : public MatchFinder::MatchCallback
+    {
+      public:
+        virtual void run(const MatchFinder::MatchResult& result)
+        {
+            const CXXMethodDecl* decl = result.Nodes.getNodeAs<clang::CXXMethodDecl>("methodDeclaration");
+
+            // get parent declaration, i.e. the method's class
+            const CXXRecordDecl* parentDecl = decl->getParent();
+            std::string parentName = parentDecl->getNameAsString();
+
+            SourceLocation location = decl->getLocation();
+            SourceManager& manager  = result.Context->getSourceManager();
+
+            std::string filename = manager.getFilename(location).str();
+
+            // remove path and leave filename only
+            filename = filename.substr(filename.find_last_of("/") + 1, filename.length());
+
+            int lineNumber = manager.getSpellingLineNumber(location);
+            DeclarationNameInfo nameInfo = decl->getNameInfo();
+            std::string methodName = nameInfo.getName().getAsString();
+
+            // TODO: this relies on class name == filename.[cpp|h], incl. case
+            if (filename == parentName + ".h")
+            {
+                // TODO: store method name and line number in some kind of list
+            }
+            else
+            if (filename == parentName + ".cpp")
+            {
+                // TODO: store method name and line number in a second list
+            }
+
+            // TODO: compare lists to verify method order is identical
+        }
+    };
+
+    int main(int argc, const char** argv)
+    {
+        CommonOptionsParser OptionsParser(argc, argv, ClangOrderCategory);
+        ClangTool           Tool(OptionsParser.getCompilations(),
+                                 OptionsParser.getSourcePathList());
+
+        MethodPrinter Printer;
+        MatchFinder   Finder;
+        Finder.addMatcher(MethodMatcher, &Printer);
+
+        return Tool.run(newFrontendActionFactory(&Finder).get());
+    }
+
+This obviously has quite a few shortcomings, but works for a really simple test set of one source file that includes its header file. However, as soon as a source file includes more files, `run(...)` is called for every method encountered in every `#include`.
+
+I can't seem to find a way to access `Tool` from within `run(...)` so I can't use [`ClangTool::getSourcePaths()`][1] to determine what file I am currently processing. I also looked into [`SourceManager::isInMainFile(...)`][2], but that only gets me method implementations and not the declarations.
+
+After working with `clang-format` and `clang-tidy`, I was under the impression that the `clang-*` tools usage concept in general is to process one file at a time and use the shell to e.g. `find ... | xargs` or so.
+
+Now I am beginning to think my general approach is wrong. How is this usually done ?
+
+Could someone with more knowledge about clang than me share their thinking about how they would solve this ?
+
+
+  [1]: https://clang.llvm.org/doxygen/classclang_1_1tooling_1_1ClangTool.html#acd2b739795035287e3bfd7c569aa2435
+  [2]: https://clang.llvm.org/doxygen/classclang_1_1SourceManager.html#a2e39268edad5a61325622987c0dd3c7a
