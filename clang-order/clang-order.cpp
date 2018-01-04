@@ -56,6 +56,9 @@ class MethodPrinter : public MatchFinder::MatchCallback
             return;
         }
 
+        // TODO: remove
+        // decl->dump();
+
         // get parent declaration, i.e. the method's class
         const CXXRecordDecl* parentDecl = decl->getParent();
         if (parentDecl == nullptr)
@@ -67,34 +70,70 @@ class MethodPrinter : public MatchFinder::MatchCallback
         // TODO: use isClass to verify parent is a class ?
         // https://stackoverflow.com/a/10493643
 
-        // https://stackoverflow.com/a/22291127
-        std::string parentDeclName = parentDecl->getNameAsString();
-
-        std::cout << "Parent declaration name: " << parentDeclName << std::endl;
-        return;
-
+        std::string parentName = parentDecl->getNameAsString();
+        // TODO: remove this once development is complete
+        // std::cout << "Parent decl name: " << parentName << std::endl;
 
         // https://stackoverflow.com/a/20702776
-        // SourceLocation location = decl->getLocation();
-        // SourceManager& manager  = result.Context->getSourceManager();
+        SourceLocation location = decl->getLocation();
+        SourceManager& manager  = result.Context->getSourceManager();
+
+        std::string filename = manager.getFilename(location).str();
+
+        // sample output:
+        // filename        : <some path>/extra/clang-order/TestClass_01.h
+        // parentName      : TestClass_01
+        // parentName + .h : TestClass_01.h
+        // std::cout << "filename        : " << filename          << std::endl;
+        // std::cout << "parentName      : " << parentName        << std::endl;
+        // std::cout << "parentName + .h : " << parentName + ".h" << std::endl;
+
+        // remove path and leave filename only
+        // https://stackoverflow.com/a/10364927
+        filename = filename.substr(filename.find_last_of("/") + 1,
+                                   filename.length());
 
         // NOTE: manager.isInMainFile(location) is true if location is in
         // the source file being processed; there is no isInHeaderFile(...)
         // that takes the header file matching the source file being
         // processed into account, just _any_ #included header file...
 
-        // if ()
-        // {
-        //     std::cout << manager.getFilename(location).str()      << std::endl;
-        //     // NOTE: in trivial test class, these three are always the same
-        //     std::cout << manager.getExpansionLineNumber(location) << std::endl;
-        //     std::cout << manager.getPresumedLineNumber (location) << std::endl;
-        //     std::cout << manager.getSpellingLineNumber (location) << std::endl;
-        //
-        //     decl->dump();
-        //
-        //     std::cout << std::endl << std::endl;
-        // }
+        // TODO: in trivial test class, these three are always the same
+        // std::cout << manager.getExpansionLineNumber(location) << std::endl;
+        // std::cout << manager.getPresumedLineNumber (location) << std::endl;
+        // std::cout << manager.getSpellingLineNumber (location) << std::endl;
+
+        // TODO: this relies on class name == filename.[cpp|h]
+
+        // https://stackoverflow.com/a/46296671
+        if (filename == parentName + ".h")
+        {
+            int lineNumber = manager.getSpellingLineNumber(location);
+
+            // https://stackoverflow.com/a/22291127
+            DeclarationNameInfo nameInfo = decl->getNameInfo();
+            std::string methodName = nameInfo.getName().getAsString();
+
+            std::cout << "Method declaration in header file:" << std::endl;
+            std::cout << "  method name : " << methodName << std::endl;
+            std::cout << "  filename    : " << filename   << std::endl;
+            std::cout << "  line number : " << lineNumber << std::endl;
+            std::cout << std::endl;
+        }
+        else
+        if (filename == parentName + ".cpp")
+        {
+            int lineNumber = manager.getSpellingLineNumber(location);
+
+            DeclarationNameInfo nameInfo = decl->getNameInfo();
+            std::string methodName = nameInfo.getName().getAsString();
+
+            std::cout << "Method definition in source file:" << std::endl;
+            std::cout << "  method name : " << methodName << std::endl;
+            std::cout << "  filename    : " << filename   << std::endl;
+            std::cout << "  line number : " << lineNumber << std::endl;
+            std::cout << std::endl;
+        }
     }
 };
 
