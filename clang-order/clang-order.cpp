@@ -1,5 +1,10 @@
 // based on https://clang.llvm.org/docs/LibASTMatchersTutorial.html
 
+// https://clang.llvm.org/docs/LibASTMatchersReference.html
+// https://clang.llvm.org/docs/RAVFrontendAction.html
+// https://clang.llvm.org/docs/LibASTMatchersTutorial.html
+// https://xaizek.github.io/2014-05-02/detecting-postfix-operators-in-for-loops
+
 #include "clang/AST/ASTContext.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/ASTMatchers/ASTMatchers.h"
@@ -9,6 +14,9 @@
 #include "clang/Tooling/Tooling.h"
 // Declares llvm::cl::extrahelp.
 #include "llvm/Support/CommandLine.h"
+
+#include <iostream>
+#include <string>
 
 
 using namespace clang;
@@ -36,10 +44,71 @@ DeclarationMatcher MethodMatcher = cxxMethodDecl(unless(isImplicit())).bind("met
 class MethodPrinter : public MatchFinder::MatchCallback
 {
   public:
-    virtual void run(const MatchFinder::MatchResult& Result)
+    virtual void run(const MatchFinder::MatchResult& result)
     {
-        if (const CXXMethodDecl* MD = Result.Nodes.getNodeAs<clang::CXXMethodDecl>("methodDeclaration"))
-            MD->dump();
+        const CXXMethodDecl* decl = \
+            result.Nodes.getNodeAs<clang::CXXMethodDecl>("methodDeclaration");
+
+        // TODO: use llvm::errs() ? or llvm::out() or so ?
+
+        if (decl == nullptr)
+        {
+            std::cout << "Can not get declaration from node" << std::endl;
+            return;
+        }
+
+        // https://stackoverflow.com/a/41437762
+        const Decl& currentDecl = *decl;
+
+        // https://stackoverflow.com/a/40188613
+        const auto& parentDecls = result.Context->getParents(currentDecl);
+        if (parentDecls.empty())
+        {
+            std::cout << "Declaration does not have any parents" << std::endl;
+            return;
+        }
+
+        // TODO: assert parentDecls.size() == 1
+        // std::cout << "parents size: " << parentDecls.size() << std::endl;
+
+        const Decl* parentDecl = parentDecls[0].get<Decl>();
+        if (parentDecl == nullptr)
+        {
+            std::cout << "Can not get first parent" << std::endl;
+            return;
+        }
+
+
+        // https://stackoverflow.com/a/22291127
+        // TODO: this doesn't build - Decl is too base class
+        DeclarationNameInfo nameInfo = parentDecl->getNameInfo();
+        std::string declName = nameInfo.getName().getAsString();
+
+        std::cout << "Parent declaration name: " << declName << std::endl;
+        return;
+
+
+        // https://stackoverflow.com/a/20702776
+        // SourceLocation location = decl->getLocation();
+        // SourceManager& manager  = result.Context->getSourceManager();
+
+        // NOTE: manager.isInMainFile(location) is true if location is in
+        // the source file being processed; there is no isInHeaderFile(...)
+        // that takes the header file matching the source file being
+        // processed into account, just _any_ #included header file...
+
+        // if ()
+        // {
+        //     std::cout << manager.getFilename(location).str()      << std::endl;
+        //     // NOTE: in trivial test class, these three are always the same
+        //     std::cout << manager.getExpansionLineNumber(location) << std::endl;
+        //     std::cout << manager.getPresumedLineNumber (location) << std::endl;
+        //     std::cout << manager.getSpellingLineNumber (location) << std::endl;
+        //
+        //     decl->dump();
+        //
+        //     std::cout << std::endl << std::endl;
+        // }
     }
 };
 
