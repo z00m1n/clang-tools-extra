@@ -1,8 +1,8 @@
 // based on https://clang.llvm.org/docs/LibASTMatchersTutorial.html
 
 #include "clang/AST/ASTContext.h"
-#include "clang/ASTMatchers/ASTMatchers.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
+#include "clang/ASTMatchers/ASTMatchers.h"
 // Declares clang::SyntaxOnlyAction.
 #include "clang/Frontend/FrontendActions.h"
 #include "clang/Tooling/CommonOptionsParser.h"
@@ -33,23 +33,25 @@ static cl::extrahelp MoreHelp("\nMore help text...");
 DeclarationMatcher MethodMatcher = cxxMethodDecl(unless(isImplicit())).bind("methodDeclaration");
 
 
-class MethodPrinter : public MatchFinder::MatchCallback {
-public :
-  virtual void run(const MatchFinder::MatchResult &Result) {
-    if (const CXXMethodDecl *MD = Result.Nodes.getNodeAs<clang::CXXMethodDecl>("methodDeclaration"))
-      MD->dump();
-  }
+class MethodPrinter : public MatchFinder::MatchCallback
+{
+  public:
+    virtual void run(const MatchFinder::MatchResult& Result)
+    {
+        if (const CXXMethodDecl* MD = Result.Nodes.getNodeAs<clang::CXXMethodDecl>("methodDeclaration"))
+            MD->dump();
+    }
 };
 
 
-int main(int argc, const char **argv) {
-  CommonOptionsParser OptionsParser(argc, argv, ClangOrderCategory);
-  ClangTool Tool(OptionsParser.getCompilations(),
-                 OptionsParser.getSourcePathList());
+int main(int argc, const char** argv)
+{
+    CommonOptionsParser OptionsParser(argc, argv, ClangOrderCategory);
+    ClangTool           Tool(OptionsParser.getCompilations(), OptionsParser.getSourcePathList());
 
-  MethodPrinter Printer;
-  MatchFinder Finder;
-  Finder.addMatcher(MethodMatcher, &Printer);
+    MethodPrinter Printer;
+    MatchFinder   Finder;
+    Finder.addMatcher(MethodMatcher, &Printer);
 
-  return Tool.run(newFrontendActionFactory(&Finder).get());
+    return Tool.run(newFrontendActionFactory(&Finder).get());
 }
